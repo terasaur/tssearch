@@ -1,0 +1,149 @@
+<project name="terasaur-search" default="run" xmlns:ivy="antlib:org.apache.ivy.ant">
+    <!-- some variables used -->
+    <property name="build.dir" value="build" />
+    <property name="lib.dir" value="lib" />
+    <property name="src.dir" value="src" />
+    <property name="conf.dir" value="conf" />
+
+    <!-- ivy configuration -->
+    <!-- <property name="ivy.home" value="${user.home}/.ant" /> -->
+    <property name="ivy.home" value="${basedir}/ivy" />
+    <condition property="ivy.home" value="${env.IVY_HOME}">
+          <isset property="env.IVY_HOME" />
+    </condition>
+    <property name="ivy.jar.dir" value="${ivy.home}/lib" />
+    <property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
+    <property name="ivy.install.version" value="2.2.0" />
+
+    <property file="build.properties"/>
+
+    <!-- paths used for compilation and run  -->
+    <path id="lib.path.id">
+        <fileset dir="${lib.dir}" />
+    </path>
+    <path id="run.path.id">
+        <path refid="lib.path.id" />
+        <path location="${build.dir}" />
+    </path>
+
+    <!-- ===== init targets ===== -->
+    <target name="download-ivy" unless="offline">
+        <mkdir dir="${ivy.jar.dir}"/>
+        <!-- download Ivy from web site so that it can be used even without any special installation -->
+        <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+            dest="${ivy.jar.file}" usetimestamp="true"/>
+    </target>
+
+    <target name="init-ivy" depends="download-ivy">
+        <!-- try to load ivy here from ivy home, in case the user has not already dropped
+             it into ant's lib dir (note that the latter copy will always take precedence).
+             We will not fail as long as local lib dir exists (it may be empty) and
+             ivy is in at least one of ant's lib dir or the local lib dir. -->
+        <path id="ivy.lib.path">
+            <fileset dir="${ivy.jar.dir}" includes="*.jar"/>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    </target>
+
+    <!-- ===== main targets ===== -->
+
+    <target name="resolve" depends="init-ivy" description="--> retrieve dependencies with ivy">
+        <ivy:retrieve/>
+    </target>
+
+    <target name="report" depends="resolve" description="--> generates a report of dependencies">
+        <ivy:report todir="${build.dir}/report"/>
+    </target>
+
+    <target name="compile" depends="resolve" description="--> collect dependencies" />
+
+    <target name="build" depends="compile, build-jetty-environment" description="--> build project">
+        <copy todir="${build.dir}/solr/conf">
+            <fileset dir="${conf.dir}/solr" includes="*" />
+        </copy>
+        <move file="${build.dir}/solr/conf/solr.xml" todir="${build.dir}/solr" />
+        <move todir="${build.dir}/solr/dist">
+            <fileset dir="${lib.dir}" includes="solr-cell*.jar" />
+            <fileset dir="${lib.dir}" includes="solr-clustering*.jar" />
+            <fileset dir="${lib.dir}" includes="solr-dataimporthandler*.jar" />
+            <fileset dir="${lib.dir}" includes="solr-langid*.jar" />
+            <fileset dir="${lib.dir}" includes="postgresql*.jar" />
+        </move>
+        <move todir="${build.dir}/lib">
+            <fileset dir="${lib.dir}" includes="core*.jar" />
+            <fileset dir="${lib.dir}" includes="jetty*.jar" />
+            <fileset dir="${lib.dir}" includes="jsp*.jar" />
+            <fileset dir="${lib.dir}" includes="servlet-api*.jar" />
+        </move>
+    </target>
+
+    <target name="run" depends="build" description="--> Run solr in local jetty container">
+        <move file="${lib.dir}/start-${jetty.version}.jar" tofile="${build.dir}/start.jar"/>
+        <java dir="${build.dir}" jar="${build.dir}/start.jar" failonerror="true" fork="true" maxmemory="256m">
+            <classpath>
+                <pathelement path="${java.class.path}"/>
+                <fileset dir="lib">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </classpath>
+        </java>
+    </target>
+
+    <target name="clean" description="--> clean the project">
+        <delete includeemptydirs="true" failonerror="false" removeNotFollowedSymlinks="true">
+            <fileset dir="${build.dir}/logs" followsymlinks="false">
+                <include name="**/*"/>
+            </fileset>
+            <fileset dir="${build.dir}" followsymlinks="false">
+                <include name="**/*"/>
+            </fileset>
+            <fileset dir="${lib.dir}" />
+        </delete>
+    </target>
+
+    <target name="clean-cache" depends="init-ivy" description="--> clean the ivy cache">
+        <ivy:cleancache />
+    </target>
+
+    <!-- ===== build target subcomponents ===== -->
+    <!--
+    <target name="build-extract-war" depends="compile">
+        <mkdir dir="${build.dir}/lib" />
+        <mkdir dir="${build.dir}/solr-war" />
+        <unzip dest="${build.dir}/solr-war">
+            <fileset dir="${lib.dir}" includes="solr-${solr.version}.war" />
+        </unzip>
+        <delete includeemptydirs="true">
+            <fileset dir="${build.dir}/solr-war" />
+        </delete>
+    </target>
+    -->
+    <target name="build-create-dirs">
+        <mkdir dir="${build.dir}/etc" />
+        <mkdir dir="${build.dir}/contexts-solr" />
+        <mkdir dir="${build.dir}/webapps-solr" />
+        <mkdir dir="${build.dir}/work" />
+        <mkdir dir="${build.dir}/log" />
+        <mkdir dir="${build.dir}/solr" />
+    </target>
+    <property name="build.logs.symlink.present" value=""/>
+    <target name="build-check-logs-symlink">
+        <condition property="build.logs.symlink.missing">
+            <not>
+                <available file="${build.dir}/logs"/>
+            </not>
+        </condition>
+    </target>
+    <target name="build-create-logs-symlink" depends="build-create-dirs, build-check-logs-symlink" if="build.logs.symlink.missing">
+        <symlink link="${build.dir}/logs" resource="log"/>
+    </target>
+    <target name="build-jetty-environment" depends="compile, build-create-logs-symlink">
+        <copy todir="${build.dir}/etc">
+            <fileset dir="${conf.dir}/jetty" includes="*" />
+        </copy>
+        <move file="${build.dir}/etc/jetty-solr.xml" tofile="${build.dir}/etc/jetty.xml"/>
+        <move file="${build.dir}/etc/terasaur-search-context.xml" todir="${build.dir}/contexts-solr"/>
+        <move file="${lib.dir}/solr-${solr.version}.war" tofile="${build.dir}/webapps-solr/solr.war"/>
+    </target>
+
+</project>

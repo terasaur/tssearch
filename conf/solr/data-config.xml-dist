@@ -1,0 +1,80 @@
+<dataConfig>
+    <dataSource
+        type="JdbcDataSource"
+        driver="org.postgresql.Driver"
+        url="jdbc:postgresql://TERASAUR_DB_HOST:TERASAUR_DB_PORT/TERASAUR_DB_NAME"
+        user="TERASAUR_DB_USER"
+        password="TERASAUR_DB_PASS"
+        readOnly="true"
+        autoCommit="false"
+        transactionIsolation="TRANSACTION_READ_COMMITTED"
+        holdability="CLOSE_CURSORS_AT_COMMIT"/>
+
+    <document>
+        <entity name="item" rootEntity="true"
+            pk="id"
+            onError="skip"
+
+            deltaQuery="SELECT id FROM ts_item WHERE last_updated &gt;= '${dataimporter.last_index_time}'"
+
+            deltaImportQuery="SELECT ts_item.id,
+                    TO_CHAR(ts_item.date_created, 'YYYY-MM-DD') || 'T' || TO_CHAR(ts_item.date_created, 'HH24:MI:SSZ') AS date_created,
+                    deleted,
+                    description,
+                    language,
+                    TO_CHAR(ts_item.last_updated, 'YYYY-MM-DD') || 'T' || TO_CHAR(ts_item.last_updated, 'HH24:MI:SSZ') AS last_updated,
+                    license,
+                    ts_item.owner_id,
+                    ts_user.username AS owner_nickname,
+                    collection_id,
+                    ts_collection.name AS collection_name,
+                    TO_CHAR(ts_item.published, 'YYYY-MM-DD') || 'T' || TO_CHAR(ts_item.published, 'HH24:MI:SSZ') AS published,
+                    title,
+                    type,
+                    COUNT(ts_torrent.info_hash) AS torrent_count,
+                    SUM(ts_torrent.size) AS torrent_total_size
+                FROM ts_item
+                LEFT JOIN ts_user ON (ts_item.owner_id = ts_user.id)
+                LEFT JOIN ts_collection ON (ts_item.collection_id = ts_collection.id)
+                LEFT JOIN ts_torrent ON (ts_item.id = ts_torrent.item_id)
+                WHERE ts_item.id = '${dataimporter.delta.id}'
+                GROUP BY ts_item.id, ts_item.date_created, deleted, description, language, ts_item.last_updated,
+                    license, ts_item.owner_id, ts_user.username, collection_id, ts_collection.name, ts_item.published, title, type"
+
+            query="SELECT ts_item.id,
+                    TO_CHAR(ts_item.date_created, 'YYYY-MM-DD') || 'T' || TO_CHAR(ts_item.date_created, 'HH24:MI:SSZ') AS date_created,
+                    deleted,
+                    description,
+                    language,
+                    TO_CHAR(ts_item.last_updated, 'YYYY-MM-DD') || 'T' || TO_CHAR(ts_item.last_updated, 'HH24:MI:SSZ') AS last_updated,
+                    license,
+                    ts_item.owner_id,
+                    ts_user.username AS owner_nickname,
+                    collection_id,
+                    ts_collection.name AS collection_name,
+                    TO_CHAR(ts_item.published, 'YYYY-MM-DD') || 'T' || TO_CHAR(ts_item.published, 'HH24:MI:SSZ') AS published,
+                    title,
+                    type,
+                    COUNT(ts_torrent.info_hash) AS torrent_count,
+                    SUM(ts_torrent.size) AS torrent_total_size
+                FROM ts_item
+                LEFT JOIN ts_user ON (ts_item.owner_id = ts_user.id)
+                LEFT JOIN ts_collection ON (ts_item.collection_id = ts_collection.id)
+                LEFT JOIN ts_torrent ON (ts_item.id = ts_torrent.item_id)
+                GROUP BY ts_item.id, ts_item.date_created, deleted, description, language, ts_item.last_updated,
+                    license, ts_item.owner_id, ts_user.username, collection_id, ts_collection.name, ts_item.published, title, type"
+
+            deletedPkQuery="SELECT id FROM ts_item WHERE published &lt; now()"
+                >
+
+            <entity name="torrents"
+                    query="SELECT info_hash || ',' || size || ',' ||
+                            TO_CHAR(published, 'YYYY-MM-DD') || 'T' || TO_CHAR(published, 'HH24:MI:SSZ') AS torrent_info
+                        FROM ts_torrent WHERE item_id=${item.id}" >
+                <field name="torrents" column="torrent_info" />
+            </entity>
+        </entity>
+
+
+    </document>
+</dataConfig>

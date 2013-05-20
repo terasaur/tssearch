@@ -1,0 +1,44 @@
+<ivy-module version="2.0">
+    <info organisation="org.ibiblio" module="terasaur-search"/>
+    <dependencies>
+        <dependency org="org.apache.solr" name="solr" rev="3.5.0">
+            <artifact name="solr" type="war" />
+            <exclude org="commons-httpclient" />
+            <exclude org="commons-logging" />
+            <exclude org="commons-codec" />
+            <exclude org="commons-io" />
+            <exclude org="commons-fileupload" />
+            <exclude org="javax.servlet" />
+            <exclude org="org.apache.lucene" />
+            <exclude org="org.apache.solr" module="solr-noggit" />
+            <exclude org="org.apache.solr" module="solr-commons-csv" />
+            <exclude org="org.slf4j" />
+            <exclude org="org.apache.solr" module="solr-core" />
+            <exclude org="org.apache.solr" module="solr-solrj" />
+        </dependency>
+        <dependency org="postgresql" name="postgresql" rev="8.4-702.jdbc4" conf="*->*,!sources,!javadoc" />
+
+        <!-- jetty -->
+        <dependency org="org.mortbay.jetty" name="jetty" rev="6.1.26" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.eclipse.jetty" name="jetty-jsp-2.1" rev="7.5.4.v20111024"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.mortbay.jetty" name="jsp-2.1-glassfish" rev="2.1.v20100127"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.mortbay.jetty" name="jsp-api-2.1" rev="6.1.14"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.eclipse.jdt" name="core" rev="3.2.0.666"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.mortbay.jetty" name="start" rev="6.1.26"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+
+        <!-- solr plugins -->
+        <dependency org="org.apache.solr" name="solr-dataimporthandler" rev="3.6.0"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.apache.solr" name="solr-clustering" rev="3.6.0"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.apache.solr" name="solr-cell" rev="3.6.0"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+        <dependency org="org.apache.solr" name="solr-langid" rev="3.6.0"
+                transitive="false" conf="*->*,!sources,!javadoc" />
+    </dependencies>
+</ivy-module>
